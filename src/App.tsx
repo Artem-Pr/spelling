@@ -14,7 +14,7 @@ const config = {
   // }
 }
 
-const errorWords = ['предоставляют', 'принимать', 'допускается', 'привилегированных', 'обыкновенные', 'Тип']
+const errorWords = ['предоставляют', 'принимать', 'допускается', 'привилегированных', 'обыкновенные', 'Тип', 'обществах']
 
 const App = () => {
   const { quill, quillRef } = useQuill(config)
@@ -52,14 +52,6 @@ const App = () => {
 
   const getCleanContent = (rawContent: any) => {
     const content = rawContent
-      // .replace(/&nbsp;/g, ' ')
-      // .replace(/&quot;/g, ' ')
-      // .replace(/\./g, '')
-      // .replace(/,/g, '')
-      // .replace(/\s<\/?b[^>]*>/g, ' ')
-      // .replace(/<\/?b[^>]*>\s/g, ' ')
-      // .replace(/(\s##|##\s)/g, ' ')
-      // .replace(/(<([^>]+)>)/g, '')
       .replace(/(&nbsp;|&quot;)/g, ' ')
       .replace(/[.;,\-"'`#&?%()*^@!0-9]/g, '')
       .replace(/<\/?(p|div|input)[^>]*>/g, ' ')
@@ -75,7 +67,6 @@ const App = () => {
     const preparedArr = content
       .trim()
       .split(' ')
-      .map((word: any) => word.toLowerCase())
     const wordArr = Array.from(new Set(preparedArr))
     console.log('getUniqWordArr', wordArr)
     return wordArr
@@ -93,30 +84,12 @@ const App = () => {
     return separatedWords
   }
 
-  // const addErrorClass = (rawContent: any, errorsArr: any) => {
-  //   return errorsArr.reduce((accumContent: any, curError: any) => {
-  //     const regexp = new RegExp(curError, 'g')
-  //     return accumContent.replace(regexp, `<span class="error">${curError}</span>`)
-  //   }, rawContent)
-  // }
-
-  const addCapitalizedWords = (wordsArr: any) => {
-    return [...wordsArr, ...wordsArr.map((word: any) => `${word.slice(0, 1).toUpperCase()}${word.slice(1)}`)]
-  }
-
   const isErrorInsideTag = (content: any) => {
     const openTagPos = content.lastIndexOf('<')
     const closeTagPos = content.lastIndexOf('>')
     const isNotFind = openTagPos === -1 && closeTagPos === -1
-    // const open = openTagPos === -1 ? 0 : openTagPos
-    // const close = closeTagPos === -1 ? 0 : closeTagPos
     return isNotFind ? -1 : openTagPos > closeTagPos
   }
-  
-  // const replaceFirstOccurrence = (content: any, errorWord: any) => {
-  //   const regexp = new RegExp(errorWord)
-  //   return content.replace(regexp, `<span class="error">${errorWord}</span>`)
-  // }
 
   const addErrorClass = (rawContent: any, errorsArr: any) => {
     const openTag = '<span class="error">'
@@ -137,19 +110,46 @@ const App = () => {
       return contentWithTags.join(curError)
     }, rawContent)
   }
-
-  // const addErrorTagsToContent = (errorWord: any, content: any) => {
-  //   const errorPosition = content.indexOf(errorWord)
-  //   const isOmitThisCase = isErrorInsideTag(content.slice(0, errorPosition))
-  //   const nextContent = content.slice(errorPosition + errorWord.length)
-  //   const curContent = content.slice()
-  //   const updatedContent = isOmitThisCase ? content : replaceFirstOccurrence(content, errorWord)
-  //
-  // }
-  //
-  // const addErrorClass = (rawContent: any, errorsArr: any) => {
-  //   return errorsArr.reduce((accumContent: any, curError: any) => {}, rawContent)
-  // }
+  
+  const removeWordsPart = (wordArr: any) => {
+    const wordsWithOutPartSeparators = wordArr.map((word: any) => word.replace(/##/g, ''))
+    return Array.from(new Set(wordsWithOutPartSeparators))
+  }
+  
+  const addErrorClassToWordsPart = (separatedWords: any, content: any) => {
+    const highLightError = (content: any, wordPartArr: any, errorWord: any) => {
+      return wordPartArr.reduce((accumContent: any, curWordPart: any) => {
+        // debugger
+        const newContent = accumContent.replace(curWordPart, `<span class="error" data-error-part="">${curWordPart}</span>`)
+        const index = newContent.indexOf('<span class="error" data-error-part')
+        console.log('newContent', newContent.slice(index - 30, index + 100))
+        return newContent
+      }, content)
+    }
+    
+    const updateContent = (curContent: any, errorWord: any): any => {
+      const firstSeparatedPart = separatedWords[errorWord][0]
+      const startIdx = curContent.indexOf(firstSeparatedPart)
+      if (startIdx === -1) return curContent
+      const contentPart = curContent.slice(startIdx)
+      const prevContentPart = curContent.slice(0, startIdx)
+      const cleanContentPart = getCleanContent(contentPart)
+      const isRightPlace = cleanContentPart.startsWith(separatedWords[errorWord].join('##'))
+      if (isRightPlace) {
+        const curContentWithTags = highLightError(contentPart, separatedWords[errorWord], errorWord)
+        const nextPartIndex = curContentWithTags.indexOf(separatedWords[errorWord].slice(-1)[0])
+        const curContentPart = curContentWithTags.slice(0, nextPartIndex)
+        const nextContentPart = curContentWithTags.slice(nextPartIndex)
+        return prevContentPart + curContentPart + updateContent(nextContentPart, errorWord)
+      }
+      const nextContentPart = contentPart.slice(firstSeparatedPart.length)
+      return prevContentPart + firstSeparatedPart + updateContent(nextContentPart, errorWord)
+    }
+    
+    return Object.keys(separatedWords).reduce((accumContent: any, curWord: any) => {
+      return updateContent(accumContent, curWord)
+    }, content)
+  }
 
   const handleCheck = () => {
     const containerElement = document.querySelector(`.container`)
@@ -158,15 +158,28 @@ const App = () => {
     if (!rawContent || !textContainer) return
 
     const content = getCleanContent(rawContent)
-    textContainer.innerHTML = content
+    // textContainer.innerHTML = content
 
     const wordArr = getUniqWordArr(content)
-    const separatedWords = getSeparatedWords(wordArr)
-
-    // const errors = addCapitalizedWords(errorWords)
-    // console.log('errors', errors)
+    const wordsForChecking = removeWordsPart(wordArr)
+    console.log('wordsForChecking', wordsForChecking)
     
     if (containerElement) containerElement.innerHTML = addErrorClass(containerElement.innerHTML, errorWords)
+  }
+  
+  const handleCheckParts = () => {
+    const containerElement = document.querySelector(`.container`)
+    const rawContent = containerElement ? containerElement.innerHTML : undefined
+    if (!rawContent) return
+    
+    const content = getCleanContent(rawContent)
+    const wordArr = getUniqWordArr(content)
+    
+    if (containerElement) {
+      const separatedWords = getSeparatedWords(wordArr)
+      containerElement.innerHTML = addErrorClassToWordsPart(separatedWords, rawContent)
+      // addErrorClassToWordsPart(separatedWords, rawContent)
+    }
   }
 
   return (
@@ -174,6 +187,7 @@ const App = () => {
       <div ref={quillRef} />
       <Button onClick={handleSet}>set</Button>
       <Button onClick={handleCheck}>check</Button>
+      <Button onClick={handleCheckParts}>check word parts</Button>
       <div className="container" dangerouslySetInnerHTML={{ __html: content2 }} />
       <br />
       <br />
