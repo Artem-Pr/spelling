@@ -3,7 +3,7 @@ import { useQuill } from 'react-quilljs'
 import { Button } from 'antd'
 
 import 'quill/dist/quill.snow.css'
-import { content, content2 } from './assets/resources'
+import { content3 } from './assets/resources2'
 
 const config = {
   placeholder: 'Compose an epic...',
@@ -14,7 +14,21 @@ const config = {
   // }
 }
 
-const errorWords = ['предоставляют', 'принимать', 'допускается', 'привилегированных', 'обыкновенные', 'Тип', 'обществах']
+const errorWords = [
+  'единственного',
+  'предоставляют',
+  'принимать',
+  'допускается',
+  'привилегированных',
+  'обыкновенные',
+  'Тип',
+  'обществах'
+]
+
+function addClassToWordParts(className: any, content: any) {
+  const dataAttribute = new RegExp('data-error-part="', 'g')
+  return content.replace()
+}
 
 const App = () => {
   const { quill, quillRef } = useQuill(config)
@@ -50,24 +64,59 @@ const App = () => {
       // }
     })
 
-  const getCleanContent = (rawContent: any) => {
-    const content = rawContent
+  /**
+   * get only text content, without symbols and numbers
+   *
+   * @param {string} content - innerText content
+   * @return {string}
+   */
+  const getCleanContent = (content: any) => {
+    const newContent = content
       .replace(/(&nbsp;|&quot;)/g, ' ')
-      .replace(/[.;,\-"'`#&?%()*^@!0-9]/g, '')
-      .replace(/<\/?(p|div|input)[^>]*>/g, ' ')
-      .replace(/<\/?(b|span|a)[^>]*>/g, '##')
+      // .replace(/[.:;,<>/\-"'`«»+=#&№?%(){}\[\]*^@!A-Za-z0-9_]/g, '')
+      .replace(/\d/g, ' ')
+      .replace(/\n/g, ' ')
+      .replace(/ /g, ' ')
+      // .replace(/<\/?(p|div|input)[^>]*>/g, ' ')
+      .replace(/[.]/g, '##')
+      // .replace(/<\/?(b|span|a)[^>]*>/g, '##')
       .replace(/\s##+/g, ' ')
       .replace(/##+\s/g, ' ')
+      .replace(/\s{2,}/gi, ' ')
+      .replace(/[.:;,<>/\-"'`–«»+=&№?%(){}\[\]*^@!A-Za-z0-9_]/g, '')
+    // console.log('content', content)
+    return newContent
+  }
+
+  const getCleanContentFromHTML = (rawContent: any) => {
+    const content = rawContent
+      .replace(
+        /(&nbsp;|&quot;|&laquo;|&raquo;|&lsaquo;|&rsaquo;|&lsquo;|&rsquo;|&ldquo;|&rdquo;|&sbquo;|&bdquo;|&bull;|&middot;|&mdash;|&ndash;|&hellip;)/g,
+        ' '
+      ) //
+      .replace(/\n/g, ' ')
+      .replace(/[.:;,/\-"'`«»+=#&№?%(){}\[\]*^@!0-9_]/g, '')
+      .replace(/<\/?(h|p|div|input|table|tbody|tr|td|th|thead|colgroup|col|form|label|img)[^>]*>/g, ' ')
+      .replace(/<\/?(b|span|a|strong)[^>]*>/g, '##')
+      .replace(/\s##+/g, ' ')
+      .replace(/##+\s/g, ' ')
+      .replace(/##{2,}/g, '##')
       .replace(/\s{2,}/gi, ' ')
     // console.log('content', content)
     return content
   }
 
+  /**
+   * get array of all uniq words from content
+   *
+   * @param {string} content - cleaned content (has only words, without symbols and numbers)
+   * @return {array<string>} array fo uniq words
+   */
   const getUniqWordArr = (content: any) => {
-    const preparedArr = content
-      .trim()
-      .split(' ')
-    const wordArr = Array.from(new Set(preparedArr))
+    const preparedArr = content.trim().split(' ')
+    const wordsSet = new Set(preparedArr)
+    wordsSet.delete('')
+    const wordArr = Array.from(wordsSet)
     console.log('getUniqWordArr', wordArr)
     return wordArr
   }
@@ -84,6 +133,12 @@ const App = () => {
     return separatedWords
   }
 
+  /**
+   * checks the error position, if the misspelled word is inside the tag, returns 'true'
+   *
+   * @param {string} content - part of HTML content starting with a misspelled word
+   * @return {boolean}
+   */
   const isErrorInsideTag = (content: any) => {
     const openTagPos = content.lastIndexOf('<')
     const closeTagPos = content.lastIndexOf('>')
@@ -91,14 +146,20 @@ const App = () => {
     return isNotFind ? -1 : openTagPos > closeTagPos
   }
 
+  /**
+   * add Error class to misspelled words
+   *
+   * @param {string} rawContent - HTML content
+   * @param {string[]} errorsArr - array of misspelled words
+   * @return {string} HTML content with added Error classes
+   */
   const addErrorClass = (rawContent: any, errorsArr: any) => {
-    const openTag = '<span class="error">'
+    const openTag = '<span class="misspelledWord">'
     const closeTag = '</span>'
-    
+
     return errorsArr.reduce((accumContent: any, curError: any) => {
-      // if (curError === 'Тип') debugger
       const contentParts = accumContent.split(curError)
-      let isOmitPreviousPart: any = true
+      let isOmitPreviousPart: any = contentParts[0].includes('<')
       const contentWithTags = contentParts.map((part: any) => {
         const needOmitError = isErrorInsideTag(part)
         const isOmitThisPart = needOmitError === -1 ? isOmitPreviousPart : needOmitError
@@ -110,33 +171,41 @@ const App = () => {
       return contentWithTags.join(curError)
     }, rawContent)
   }
-  
+
+  /**
+   * remove '##' separators from every word in array
+   *
+   * @param {string[]} wordArr
+   * @return {string[]}
+   */
   const removeWordsPart = (wordArr: any) => {
     const wordsWithOutPartSeparators = wordArr.map((word: any) => word.replace(/##/g, ''))
     return Array.from(new Set(wordsWithOutPartSeparators))
   }
-  
+
   const addErrorClassToWordsPart = (separatedWords: any, content: any) => {
-    const highLightError = (content: any, wordPartArr: any, errorWord: any) => {
+    const highLightError = (content: any, wordPartArr: any) => {
       return wordPartArr.reduce((accumContent: any, curWordPart: any) => {
-        // debugger
-        const newContent = accumContent.replace(curWordPart, `<span class="error" data-error-part="">${curWordPart}</span>`)
-        const index = newContent.indexOf('<span class="error" data-error-part')
+        const newContent = accumContent.replace(
+          curWordPart,
+          `<span class="misspelledWord">${curWordPart}</span>`
+        )
+        const index = newContent.indexOf('<span class="misspelledWord"')
         console.log('newContent', newContent.slice(index - 30, index + 100))
         return newContent
       }, content)
     }
-    
+
     const updateContent = (curContent: any, errorWord: any): any => {
       const firstSeparatedPart = separatedWords[errorWord][0]
       const startIdx = curContent.indexOf(firstSeparatedPart)
       if (startIdx === -1) return curContent
       const contentPart = curContent.slice(startIdx)
       const prevContentPart = curContent.slice(0, startIdx)
-      const cleanContentPart = getCleanContent(contentPart)
+      const cleanContentPart = getCleanContentFromHTML(contentPart)
       const isRightPlace = cleanContentPart.startsWith(separatedWords[errorWord].join('##'))
       if (isRightPlace) {
-        const curContentWithTags = highLightError(contentPart, separatedWords[errorWord], errorWord)
+        const curContentWithTags = highLightError(contentPart, separatedWords[errorWord])
         const nextPartIndex = curContentWithTags.indexOf(separatedWords[errorWord].slice(-1)[0])
         const curContentPart = curContentWithTags.slice(0, nextPartIndex)
         const nextContentPart = curContentWithTags.slice(nextPartIndex)
@@ -145,50 +214,63 @@ const App = () => {
       const nextContentPart = contentPart.slice(firstSeparatedPart.length)
       return prevContentPart + firstSeparatedPart + updateContent(nextContentPart, errorWord)
     }
-    
+
     return Object.keys(separatedWords).reduce((accumContent: any, curWord: any) => {
       return updateContent(accumContent, curWord)
     }, content)
   }
 
   const handleCheck = () => {
-    const containerElement = document.querySelector(`.container`)
-    const rawContent = containerElement ? containerElement.innerHTML : undefined
-    const textContainer = document.querySelector(`.text`)
-    if (!rawContent || !textContainer) return
+    const containerElement: HTMLElement | null = document.querySelector(`.container`)
+    const rawContent = containerElement ? containerElement.innerText : undefined
+    if (!rawContent) return
 
     const content = getCleanContent(rawContent)
-    // textContainer.innerHTML = content
-
     const wordArr = getUniqWordArr(content)
     const wordsForChecking = removeWordsPart(wordArr)
     console.log('wordsForChecking', wordsForChecking)
-    
+
     if (containerElement) containerElement.innerHTML = addErrorClass(containerElement.innerHTML, errorWords)
   }
-  
+
   const handleCheckParts = () => {
     const containerElement = document.querySelector(`.container`)
     const rawContent = containerElement ? containerElement.innerHTML : undefined
     if (!rawContent) return
-    
-    const content = getCleanContent(rawContent)
+
+    const content = getCleanContentFromHTML(rawContent)
     const wordArr = getUniqWordArr(content)
-    
+    console.log('wordArr', wordArr)
+
     if (containerElement) {
       const separatedWords = getSeparatedWords(wordArr)
-      containerElement.innerHTML = addErrorClassToWordsPart(separatedWords, rawContent)
+      const contentWithWordsPart = addErrorClassToWordsPart(separatedWords, rawContent)
+      containerElement.innerHTML = contentWithWordsPart
       // addErrorClassToWordsPart(separatedWords, rawContent)
     }
   }
-
+  
+  function handleRemoveErrors() {
+    const containerElement = document.querySelector(`.container`)
+    const rawContent = containerElement ? containerElement.innerHTML : undefined
+    if (!rawContent) return
+    if (containerElement) {
+      containerElement.innerHTML = errorWords.reduce((accum, currentValue) => {
+        const replaceRegExp = new RegExp(`<span class="misspelledWord">${currentValue}</span>`, 'g')
+        return accum.replace(replaceRegExp, currentValue)
+      }, rawContent)
+    }
+  }
+  
+  // qd-es-text
   return (
     <div style={{ width: 700, height: 300, padding: 20 }} spellCheck="false">
       <div ref={quillRef} />
       <Button onClick={handleSet}>set</Button>
       <Button onClick={handleCheck}>check</Button>
       <Button onClick={handleCheckParts}>check word parts</Button>
-      <div className="container" dangerouslySetInnerHTML={{ __html: content2 }} />
+      <Button onClick={handleRemoveErrors}>remove errors</Button>
+      <div className="container" dangerouslySetInnerHTML={{ __html: content3 }} />
       <br />
       <br />
       <div className="text" />
