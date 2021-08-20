@@ -1,18 +1,8 @@
-import React from 'react'
-import { useQuill } from 'react-quilljs'
+import React, { useState } from "react";
 import { Button } from 'antd'
 
-import 'quill/dist/quill.snow.css'
 import { content3 } from './assets/resources2'
-
-const config = {
-  placeholder: 'Compose an epic...',
-  theme: 'snow',
-  formats: ['underline']
-  // modules: {
-  //   toolbar: false
-  // }
-}
+import { leftMenu } from './assets/leftMenu'
 
 const errorWords = [
   'единственного',
@@ -22,48 +12,15 @@ const errorWords = [
   'привилегированных',
   'обыкновенные',
   'Тип',
-  'обществах'
+  'обществах',
+  'статус'
 ]
 
-function addClassToWordParts(className: any, content: any) {
-  const dataAttribute = new RegExp('data-error-part="', 'g')
-  return content.replace()
-}
+let errorWordsWithParts: string[] = []
 
 const App = () => {
-  const { quill, quillRef } = useQuill(config)
-  // const [text, setText] = useState('console.log(vom)')
-  // const errorArr = ['and', 'the']
-
-  const handleSet = () => {
-    // eslint-disable-next-line functional/immutable-data
-    // quillRef.current.children[0].innerHTML = '<div>dom-bom<u>insert</u>></div>'
-    quill.setHTML('<div>Hello</div>')
-    // quill.setContents([
-    //   { insert: "console.log('delta', " },
-    //   { insert: 'delta', attributes: { underline: true } },
-    //   { insert: "\nconsole.log('oldDelta', oldDelta)" }
-    // ])
-  }
-
-  quill &&
-    quill.on('text-change', function (delta: any, oldDelta: any) {
-      console.log('delta', delta)
-      console.log('oldDelta', oldDelta)
-      if (delta.ops[1] && delta.ops[1].insert === 'I') {
-        quill.setText(oldDelta.ops[0].insert + ' Bom-bom')
-      }
-      // const content: DeltaItem[] = quill.getContents()
-      // console.log('content', content)
-
-      // console.log(quill.getHTML())
-      console.log(quillRef.current.children[0].innerHTML)
-
-      // if (delta.ops[1].insert === 'Q') {
-      //   quill.getBounds(7)
-      // }
-    })
-
+  const [display, setDisplay] = useState(true)
+  
   /**
    * get only text content, without symbols and numbers
    *
@@ -71,20 +28,17 @@ const App = () => {
    * @return {string}
    */
   const getCleanContent = (content: any) => {
+    // console.log('content before', content)
     const newContent = content
-      .replace(/(&nbsp;|&quot;)/g, ' ')
-      // .replace(/[.:;,<>/\-"'`«»+=#&№?%(){}\[\]*^@!A-Za-z0-9_]/g, '')
-      .replace(/\d/g, ' ')
-      .replace(/\n/g, ' ')
       .replace(/ /g, ' ')
-      // .replace(/<\/?(p|div|input)[^>]*>/g, ' ')
+      .replace(/\s+/gi, ' ')
+      .replace(/[:;,<>/"'`–«»+=&№?%(){}\[\]*^@!A-Za-z0-9_]/g, '')
+      .replace(/(\s-|-\s)/g, '') //убираем дефис вначале и конце слов, при этом осталяя их в середине
       .replace(/[.]/g, '##')
-      // .replace(/<\/?(b|span|a)[^>]*>/g, '##')
+      .replace(/(^##|##$)/g, '') //тремируем текст, удаляем лишние знаки вначале и конце
       .replace(/\s##+/g, ' ')
       .replace(/##+\s/g, ' ')
-      .replace(/\s{2,}/gi, ' ')
-      .replace(/[.:;,<>/\-"'`–«»+=&№?%(){}\[\]*^@!A-Za-z0-9_]/g, '')
-    // console.log('content', content)
+    // console.log('content', newContent)
     return newContent
   }
 
@@ -98,6 +52,8 @@ const App = () => {
       .replace(/[.:;,/\-"'`«»+=#&№?%(){}\[\]*^@!0-9_]/g, '')
       .replace(/<\/?(h|p|div|input|table|tbody|tr|td|th|thead|colgroup|col|form|label|img)[^>]*>/g, ' ')
       .replace(/<\/?(b|span|a|strong)[^>]*>/g, '##')
+      .replace(/[:;,<>/"'`–«»+=&№?%(){}\[\]*^@!A-Za-z0-9_]/g, '')
+      .replace(/(\s-|-\s)/g, '') //убираем дефис вначале и конце слов, при этом осталяя их в середине
       .replace(/\s##+/g, ' ')
       .replace(/##+\s/g, ' ')
       .replace(/##{2,}/g, '##')
@@ -116,13 +72,15 @@ const App = () => {
     const preparedArr = content.trim().split(' ')
     const wordsSet = new Set(preparedArr)
     wordsSet.delete('')
+    // wordsSet.delete('-')
     const wordArr = Array.from(wordsSet)
-    console.log('getUniqWordArr', wordArr)
+    console.log('getUniqWordArr', wordArr.sort())
     return wordArr
   }
 
   const getSeparatedWords = (wordsArr: any) => {
     const separatedWordsArr = wordsArr.filter((word: any) => word.includes('##'))
+    console.log('separatedWordsArr', separatedWordsArr)
     if (!separatedWordsArr.length) return null
     const separatedWords: any = {}
     separatedWordsArr.forEach((word: any) => {
@@ -131,6 +89,12 @@ const App = () => {
     })
     console.log('separatedWords', separatedWords)
     return separatedWords
+  }
+  
+  function flattenSeparatedWords(separatedWordsObj: any) {
+    return Object.keys(separatedWordsObj).reduce((accum, currentKey) => {
+      return accum.concat(separatedWordsObj[currentKey])
+    }, [])
   }
 
   /**
@@ -172,24 +136,10 @@ const App = () => {
     }, rawContent)
   }
 
-  /**
-   * remove '##' separators from every word in array
-   *
-   * @param {string[]} wordArr
-   * @return {string[]}
-   */
-  const removeWordsPart = (wordArr: any) => {
-    const wordsWithOutPartSeparators = wordArr.map((word: any) => word.replace(/##/g, ''))
-    return Array.from(new Set(wordsWithOutPartSeparators))
-  }
-
   const addErrorClassToWordsPart = (separatedWords: any, content: any) => {
     const highLightError = (content: any, wordPartArr: any) => {
       return wordPartArr.reduce((accumContent: any, curWordPart: any) => {
-        const newContent = accumContent.replace(
-          curWordPart,
-          `<span class="misspelledWord">${curWordPart}</span>`
-        )
+        const newContent = accumContent.replace(curWordPart, `<span class="misspelledWord">${curWordPart}</span>`)
         const index = newContent.indexOf('<span class="misspelledWord"')
         console.log('newContent', newContent.slice(index - 30, index + 100))
         return newContent
@@ -197,6 +147,9 @@ const App = () => {
     }
 
     const updateContent = (curContent: any, errorWord: any): any => {
+      if (curContent.includes('Правовой <span class="misspelledWord">статус')) {
+        // debugger
+      }
       const firstSeparatedPart = separatedWords[errorWord][0]
       const startIdx = curContent.indexOf(firstSeparatedPart)
       if (startIdx === -1) return curContent
@@ -219,58 +172,118 @@ const App = () => {
       return updateContent(accumContent, curWord)
     }, content)
   }
-
-  const handleCheck = () => {
-    const containerElement: HTMLElement | null = document.querySelector(`.container`)
-    const rawContent = containerElement ? containerElement.innerText : undefined
-    if (!rawContent) return
-
-    const content = getCleanContent(rawContent)
-    const wordArr = getUniqWordArr(content)
-    const wordsForChecking = removeWordsPart(wordArr)
-    console.log('wordsForChecking', wordsForChecking)
-
-    if (containerElement) containerElement.innerHTML = addErrorClass(containerElement.innerHTML, errorWords)
+  
+  function handleRemoveErrors(containersList: any) {
+    if (!containersList.length) return null
+    console.log('handleRemoveErrors')
+    for(let i = 0; i < containersList.length; i++) {
+      containersList[i].innerHTML = errorWordsWithParts.reduce((accum, currentValue) => {
+        const replaceRegExp = new RegExp(`<span class="misspelledWord">${currentValue}</span>`, 'g')
+        const newAccum = accum.replace(replaceRegExp, currentValue)
+        return newAccum
+      }, containersList[i].innerHTML)
+    }
+    initSpellCheckScript()
   }
-
-  const handleCheckParts = () => {
-    const containerElement = document.querySelector(`.container`)
-    const rawContent = containerElement ? containerElement.innerHTML : undefined
-    if (!rawContent) return
-
+  
+  const checkMisspelledWords = (containerElementList: any) => {
+    console.log('start script')
+  
+    const mainContainer = document.querySelector('.qd-carcass')
+    if (!mainContainer) return
+    // const textContent = mainContainer.innerText
+    const rawContent = mainContainer.innerHTML
+  
     const content = getCleanContentFromHTML(rawContent)
     const wordArr = getUniqWordArr(content)
-    console.log('wordArr', wordArr)
+    const separatedWords = getSeparatedWords(wordArr)
+    
+    // добавляем части в массив для дальшейшей очистки (вынести в отдельную функцию)
+    const wordsPart = flattenSeparatedWords(separatedWords)
+    errorWordsWithParts = errorWords.concat(wordsPart)
+    
+    containerElementList.forEach((elementItem: any) => {
+      const contentFirstStepUpdate = addErrorClass(elementItem.innerHTML, errorWords)
+      const contentWithWordsPart = addErrorClassToWordsPart(separatedWords, contentFirstStepUpdate)
+      elementItem.innerHTML = contentWithWordsPart
+    })
+  }
 
-    if (containerElement) {
-      const separatedWords = getSeparatedWords(wordArr)
-      const contentWithWordsPart = addErrorClassToWordsPart(separatedWords, rawContent)
-      containerElement.innerHTML = contentWithWordsPart
-      // addErrorClassToWordsPart(separatedWords, rawContent)
-    }
+  function initSpellCheck(editButton: any) {
+    console.log('initSpellCheck', editButton)
+    const mainContainer = document.querySelector('.qd-carcass')
+
+    if (mainContainer) mainContainer.setAttribute('spellcheck', String(false))
+    editButton.addEventListener('click', checkEditMode, false)
   }
-  
-  function handleRemoveErrors() {
-    const containerElement = document.querySelector(`.container`)
-    const rawContent = containerElement ? containerElement.innerHTML : undefined
-    if (!rawContent) return
-    if (containerElement) {
-      containerElement.innerHTML = errorWords.reduce((accum, currentValue) => {
-        const replaceRegExp = new RegExp(`<span class="misspelledWord">${currentValue}</span>`, 'g')
-        return accum.replace(replaceRegExp, currentValue)
-      }, rawContent)
-    }
+
+  function checkEditMode() {
+    const timer = setInterval(() => {
+      const containerNodeElementList1 = document.querySelectorAll('.qd-es-text')
+      const containerNodeElementList2 = document.querySelectorAll('.paragraph')
+      // const selectAllButton = document.querySelector('.qd-select-all-button')
+
+      if (
+        !containerNodeElementList1.length ||
+        !containerNodeElementList2.length
+        // !selectAllButton
+      )
+        return
+
+      const containerElementList1 = Array.from(containerNodeElementList1)
+      const containerElementList2 = Array.from(containerNodeElementList2)
+
+      const containerElementList = containerElementList1.concat(containerElementList2)
+
+      if (containerElementList.length) {
+        clearInterval(timer)
+        // console.log('containerElementList', containerElementList)
+        checkMisspelledWords(containerElementList)
+        initBtnEditAction(containerElementList)
+      }
+    }, 1000)
   }
-  
+
+  function initBtnEditAction(containerElementList: any) {
+    console.log('initBtnEditAction')
+    const interval = setInterval(() => {
+      const editButtonActive = document.querySelector('.qd-carcass-btn-edit-active')
+      if (editButtonActive) {
+        editButtonActive.addEventListener(
+          'click',
+          function () {
+            handleRemoveErrors(containerElementList)
+          },
+          false
+        )
+        clearInterval(interval)
+      }
+    }, 500)
+  }
+
+  function initSpellCheckScript() {
+    const carcassBtnEditTimer = setInterval(() => {
+      const editButton = document.querySelector('.qd-carcass-btn-edit')
+      if (editButton) {
+        initSpellCheck(editButton)
+        clearInterval(carcassBtnEditTimer)
+      }
+    }, 500)
+  }
+
+  initSpellCheckScript()
+
   // qd-es-text
   return (
-    <div style={{ width: 700, height: 300, padding: 20 }} spellCheck="false">
-      <div ref={quillRef} />
-      <Button onClick={handleSet}>set</Button>
-      <Button onClick={handleCheck}>check</Button>
-      <Button onClick={handleCheckParts}>check word parts</Button>
-      <Button onClick={handleRemoveErrors}>remove errors</Button>
-      <div className="container" dangerouslySetInnerHTML={{ __html: content3 }} />
+    <div>
+      <button className="qd-carcass-btn-edit">Edit mode</button>
+      <button className="qd-carcass-btn-edit-active">Normal mode</button>
+      <button onClick={() => setDisplay(!display)}>display</button>
+      <br />
+      <div className='qd-carcass' style={{ display: display ? 'flex' : 'none' }}>
+        <div style={{ minWidth: 400, margin: 10 }} dangerouslySetInnerHTML={{ __html: leftMenu }} />
+        <div style={{ margin: 10 }} className="container" dangerouslySetInnerHTML={{ __html: content3 }} />
+      </div>
       <br />
       <br />
       <div className="text" />
