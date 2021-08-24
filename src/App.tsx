@@ -1,8 +1,13 @@
-import React, { useState } from "react";
-import { Button } from 'antd'
+import React, { useState } from 'react'
 
 import { content3 } from './assets/resources2'
 import { leftMenu } from './assets/leftMenu'
+
+function createCode() {
+  return Math.floor(Math.random() * 1000000)
+    .toString()
+    .padStart(6, '0')
+}
 
 const errorWords = [
   'единственного',
@@ -113,16 +118,20 @@ const App = () => {
   /**
    * add Error class to misspelled words
    *
-   * @param {string} rawContent - HTML content
+   * @param {string} rawContent - outer HTML content
    * @param {string[]} errorsArr - array of misspelled words
    * @return {string} HTML content with added Error classes
    */
   const addErrorClass = (rawContent: any, errorsArr: any) => {
-    const openTag = '<span class="misspelledWord">'
-    const closeTag = '</span>'
+    const removeExtraOpenTag = (content: any) => {
+      return content.slice(0, content.lastIndexOf('<span class="misspelledWord"'))
+    }
 
     return errorsArr.reduce((accumContent: any, curError: any) => {
+      const openTag = `<span class="misspelledWord" data-value="${curError}">`
+      const closeTag = '</span>'
       const contentParts = accumContent.split(curError)
+      if (contentParts.length === 1) return contentParts[0]
       let isOmitPreviousPart: any = contentParts[0].includes('<')
       const contentWithTags = contentParts.map((part: any) => {
         const needOmitError = isErrorInsideTag(part)
@@ -132,24 +141,38 @@ const App = () => {
         isOmitPreviousPart = isOmitThisPart
         return `${begin}${part}${end}`
       })
-      return contentWithTags.join(curError)
+      
+      return removeExtraOpenTag(contentWithTags.join(curError))
     }, rawContent)
   }
 
   const addErrorClassToWordsPart = (separatedWords: any, content: any) => {
-    const highLightError = (content: any, wordPartArr: any) => {
+    const wordListCodes: any = {}
+    
+    const updateCodesToErrorWords = (content: any) => {
+      return Object.keys(wordListCodes).reduce((accum, currentValue) => {
+        const regexp = new RegExp(currentValue, 'g')
+        return accum.replace(regexp, wordListCodes[currentValue])
+      }, content)
+    }
+    
+    const highLightError = (content: any, wordPartArr: any, errorWord: any) => {
       return wordPartArr.reduce((accumContent: any, curWordPart: any) => {
-        const newContent = accumContent.replace(curWordPart, `<span class="misspelledWord">${curWordPart}</span>`)
-        const index = newContent.indexOf('<span class="misspelledWord"')
-        console.log('newContent', newContent.slice(index - 30, index + 100))
+        const dataCode = createCode()
+        wordListCodes[dataCode] = errorWord
+        const newContent = accumContent.replace(
+          curWordPart,
+          `<span class="misspelledWord" data-value="${dataCode}">${curWordPart}</span>`
+        )
+        // const index = newContent.indexOf('<span class="misspelledWord"')
         return newContent
       }, content)
     }
 
     const updateContent = (curContent: any, errorWord: any): any => {
-      if (curContent.includes('Правовой <span class="misspelledWord">статус')) {
+      // if (curContent.includes('Правовой <span class="misspelledWord">статус')) {
         // debugger
-      }
+      // }
       const firstSeparatedPart = separatedWords[errorWord][0]
       const startIdx = curContent.indexOf(firstSeparatedPart)
       if (startIdx === -1) return curContent
@@ -158,7 +181,7 @@ const App = () => {
       const cleanContentPart = getCleanContentFromHTML(contentPart)
       const isRightPlace = cleanContentPart.startsWith(separatedWords[errorWord].join('##'))
       if (isRightPlace) {
-        const curContentWithTags = highLightError(contentPart, separatedWords[errorWord])
+        const curContentWithTags = highLightError(contentPart, separatedWords[errorWord], errorWord)
         const nextPartIndex = curContentWithTags.indexOf(separatedWords[errorWord].slice(-1)[0])
         const curContentPart = curContentWithTags.slice(0, nextPartIndex)
         const nextContentPart = curContentWithTags.slice(nextPartIndex)
@@ -167,22 +190,34 @@ const App = () => {
       const nextContentPart = contentPart.slice(firstSeparatedPart.length)
       return prevContentPart + firstSeparatedPart + updateContent(nextContentPart, errorWord)
     }
-
-    return Object.keys(separatedWords).reduce((accumContent: any, curWord: any) => {
+    
+    const contentWithErrorClasses = Object.keys(separatedWords).reduce((accumContent: any, curWord: any) => {
       return updateContent(accumContent, curWord)
     }, content)
+    
+    return updateCodesToErrorWords(contentWithErrorClasses)
   }
   
   function handleRemoveErrors(containersList: any) {
     if (!containersList.length) return null
     console.log('handleRemoveErrors')
-    for(let i = 0; i < containersList.length; i++) {
-      containersList[i].innerHTML = errorWordsWithParts.reduce((accum, currentValue) => {
-        const replaceRegExp = new RegExp(`<span class="misspelledWord">${currentValue}</span>`, 'g')
-        const newAccum = accum.replace(replaceRegExp, currentValue)
-        return newAccum
-      }, containersList[i].innerHTML)
-    }
+    console.log('errorWordsWithParts', errorWordsWithParts)
+    containersList.forEach((containerItem: any) => {
+      // console.log('containerItem', containerItem.outerHTML)
+      const currentContent = containerItem.innerHTML
+      const updatedContent = errorWordsWithParts.reduce((accum, currentValue) => {
+        const regexp = new RegExp(`<span class="misspelledWord"([\\s\\S]|[^<]*?)>${currentValue}<\\/span>`, 'g')
+        const response = accum.replace(regexp, currentValue)
+        if (accum.includes('ного акционера')) {
+          console.log('currentValue----------', currentValue)
+          console.log('accum', accum)
+          console.log('response', response)
+        }
+        return response
+      }, currentContent)
+      containerItem.innerHTML = updatedContent
+    })
+    
     initSpellCheckScript()
   }
   
@@ -191,7 +226,6 @@ const App = () => {
   
     const mainContainer = document.querySelector('.qd-carcass')
     if (!mainContainer) return
-    // const textContent = mainContainer.innerText
     const rawContent = mainContainer.innerHTML
   
     const content = getCleanContentFromHTML(rawContent)
@@ -203,17 +237,38 @@ const App = () => {
     errorWordsWithParts = errorWords.concat(wordsPart)
     
     containerElementList.forEach((elementItem: any) => {
-      const contentFirstStepUpdate = addErrorClass(elementItem.innerHTML, errorWords)
+      const contentFirstStepUpdate = addErrorClass(elementItem.outerHTML, errorWords)
+      // console.log('contentFirstStepUpdate', contentFirstStepUpdate)
       const contentWithWordsPart = addErrorClassToWordsPart(separatedWords, contentFirstStepUpdate)
-      elementItem.innerHTML = contentWithWordsPart
+      // console.log('contentWithWordsPart', contentWithWordsPart)
+      // elementItem.innerHTML = contentWithWordsPart
+      elementItem.outerHTML = contentWithWordsPart
     })
+  
+    const containerNodeElementList1 = document.querySelectorAll('.qd-es-text')
+    const containerNodeElementList2 = document.querySelectorAll('.paragraph')
+    if (
+      !containerNodeElementList1.length ||
+      !containerNodeElementList2.length
+    ) {
+      return
+    }
+  
+    const containerElementList1 = Array.from(containerNodeElementList1)
+    const containerElementList2 = Array.from(containerNodeElementList2)
+  
+    const containerList = containerElementList1.concat(containerElementList2)
+    initBtnEditAction(containerList)
   }
 
   function initSpellCheck(editButton: any) {
     console.log('initSpellCheck', editButton)
     const mainContainer = document.querySelector('.qd-carcass')
 
-    if (mainContainer) mainContainer.setAttribute('spellcheck', String(false))
+    if (mainContainer) {
+      mainContainer.setAttribute('spellcheck', String(false))
+      initMenu(mainContainer)
+    }
     editButton.addEventListener('click', checkEditMode, false)
   }
 
@@ -239,7 +294,7 @@ const App = () => {
         clearInterval(timer)
         // console.log('containerElementList', containerElementList)
         checkMisspelledWords(containerElementList)
-        initBtnEditAction(containerElementList)
+        // initBtnEditAction(containerElementList)
       }
     }, 1000)
   }
@@ -270,7 +325,31 @@ const App = () => {
       }
     }, 500)
   }
+  
+  function toggleClass(elem: any, className: any) {
+    if (elem.classList.contains(className)) elem.classList.remove(className)
+    else elem.classList.add(className)
+  }
+  
+  function initMenu(mainContainer: any) {
+    const menuWrapper = document.createElement('div')
+    menuWrapper.classList.add('misspelledWord-menu-wrapper')
+    mainContainer.appendChild(menuWrapper)
+  
+    // const errorsList = document.querySelectorAll('.misspelledWord')
+    // errorsList.forEach(errorElem => {
+    //   errorElem.addEventListener('click')
+    // })
+    mainContainer.addEventListener('click', (evt: any) => {
+      evt.preventDefault()
+      let target = evt.target
+      if (target && target.classList.contains('misspelledWord')) {
 
+        toggleClass(menuWrapper, 'active')
+      }
+    }, false)
+  }
+  
   initSpellCheckScript()
 
   // qd-es-text
