@@ -23,6 +23,57 @@ const errorWords = [
 
 let errorWordsWithParts: string[] = []
 
+const contextMenuFirstLevel: any = [
+  {
+    icon: 'src/assets/images/svg-icons-html/plus_gray_medium.svg',
+    label: 'Правописание',
+    name: 'spelling',
+    nextMenu: true
+  },
+  {
+    divider: true
+  },
+  {
+    icon: 'src/assets/images/svg-icons-html/plus_gray_medium.svg',
+    label: 'Добавить в словарь',
+    name: 'addToDictionary',
+  },
+  {
+    icon: 'src/assets/images/svg-icons-html/plus_gray_medium.svg',
+    label: 'Поиск в интернете',
+    name: 'search',
+  },
+  {
+    divider: true
+  },
+  {
+    icon: 'src/assets/images/svg-icons-html/plus_gray_medium.svg',
+    label: 'Вырезать',
+    name: 'cut',
+  },
+  {
+    icon: 'src/assets/images/svg-icons-html/plus_gray_medium.svg',
+    label: 'Копировать',
+    name: 'copy',
+  },
+  {
+    icon: 'src/assets/images/svg-icons-html/plus_gray_medium.svg',
+    label: 'Вставить',
+    name: 'paste',
+  },
+]
+
+const contextMenuHTML = '<ul class="misspelledWord-menu">\n' +
+  '  <li class="misspelledWord-menu__item spelling"><img src="http://dm-kdd-srv05.dms.loc:8080/qd/public/1/carcass/default/images/expcomment.png" alt="icon" /><span>Правописание</span></li>\n' +
+  '  <li class="misspelledWord-menu__divider"></li>\n' +
+  '  <li class="misspelledWord-menu__item"><img src="http://dm-kdd-srv05.dms.loc:8080/qd/public/1/carcass/default/images/expcomment.png" alt="icon" /><span>Добавить в словарь</span></li>\n' +
+  '  <li class="misspelledWord-menu__item"><img src="http://dm-kdd-srv05.dms.loc:8080/qd/public/1/carcass/default/images/expcomment.png" alt="icon" /><span>Поиск в интернете</span></li>\n' +
+  '  <li class="misspelledWord-menu__divider"></li>\n' +
+  '  <li class="misspelledWord-menu__item"><img src="http://dm-kdd-srv05.dms.loc:8080/qd/public/1/carcass/default/images/expcomment.png" alt="icon" /><span>Вырезать</span></li>\n' +
+  '  <li class="misspelledWord-menu__item"><img src="http://dm-kdd-srv05.dms.loc:8080/qd/public/1/carcass/default/images/expcomment.png" alt="icon" /><span>Копировать</span></li>\n' +
+  '  <li class="misspelledWord-menu__item"><img src="http://dm-kdd-srv05.dms.loc:8080/qd/public/1/carcass/default/images/expcomment.png" alt="icon" /><span>Вставить</span></li>\n' +
+  '</ul>'
+
 const App = () => {
   const [display, setDisplay] = useState(true)
   
@@ -200,22 +251,15 @@ const App = () => {
   
   function handleRemoveErrors(containersList: any) {
     if (!containersList.length) return null
-    console.log('handleRemoveErrors')
-    console.log('errorWordsWithParts', errorWordsWithParts)
+    // console.log('handleRemoveErrors')
+    // console.log('errorWordsWithParts', errorWordsWithParts)
     containersList.forEach((containerItem: any) => {
       // console.log('containerItem', containerItem.outerHTML)
       const currentContent = containerItem.innerHTML
-      const updatedContent = errorWordsWithParts.reduce((accum, currentValue) => {
+      containerItem.innerHTML = errorWordsWithParts.reduce((accum, currentValue) => {
         const regexp = new RegExp(`<span class="misspelledWord"([\\s\\S]|[^<]*?)>${currentValue}<\\/span>`, 'g')
-        const response = accum.replace(regexp, currentValue)
-        if (accum.includes('ного акционера')) {
-          console.log('currentValue----------', currentValue)
-          console.log('accum', accum)
-          console.log('response', response)
-        }
-        return response
+        return accum.replace(regexp, currentValue)
       }, currentContent)
-      containerItem.innerHTML = updatedContent
     })
     
     initSpellCheckScript()
@@ -331,21 +375,38 @@ const App = () => {
     else elem.classList.add(className)
   }
   
-  function initMenu(mainContainer: any) {
+  function createContextMenu(mainContainer: any) {
     const menuWrapper = document.createElement('div')
     menuWrapper.classList.add('misspelledWord-menu-wrapper')
+    menuWrapper.innerHTML = contextMenuHTML
     mainContainer.appendChild(menuWrapper)
+    return menuWrapper
+  }
   
-    // const errorsList = document.querySelectorAll('.misspelledWord')
-    // errorsList.forEach(errorElem => {
-    //   errorElem.addEventListener('click')
-    // })
+  function isNotContain(elem: any, parentClass: any): any {
+    if (elem.classList.contains(parentClass)) {
+      return false
+    } else {
+      const parentElem = elem.parentElement
+      return parentElem ? isNotContain(parentElem, parentClass) : true
+    }
+  }
+  
+  function initMenu(mainContainer: any) {
+    let menuWrapper: any = document.querySelector('.misspelledWord-menu-wrapper')
+    if (!menuWrapper) {
+      menuWrapper = createContextMenu(mainContainer)
+    }
+    
     mainContainer.addEventListener('click', (evt: any) => {
       evt.preventDefault()
       let target = evt.target
-      if (target && target.classList.contains('misspelledWord')) {
-
-        toggleClass(menuWrapper, 'active')
+      if (target.classList.contains('misspelledWord')) {
+        menuWrapper.style.top = `${evt.pageY}px`
+        menuWrapper.style.left = `${evt.pageX}px`
+        menuWrapper.classList.add('active')
+      } else if (isNotContain(target, 'misspelledWord-menu-wrapper')) {
+        menuWrapper.classList.remove('active')
       }
     }, false)
   }
