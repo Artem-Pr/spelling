@@ -16,16 +16,24 @@
     padding: 0;
     margin: 0;
 
-    &-wrapper {
+    &__wrapper {
         display: none;
         position: absolute;
-        width: 300px;
         background: white;
-        z-index: 100000;
         border: 1px solid #ccc;
     }
 
-    &-wrapper.active {
+    &__wrapper.menu-level1 {
+      width: 300px;
+      z-index: 100000;
+    }
+
+    &__wrapper.menu-level2 {
+      width: 200px;
+      z-index: 99999;
+    }
+
+    &__wrapper.active {
         display: block;
     }
 
@@ -37,17 +45,86 @@
 
     &__item {
       display: flex;
+      position: relative;
       align-items: center;
       height: 30px;
-      padding: 0 30px 0 10px;
+      padding: 0 15px 0 10px;
       cursor: pointer;
     }
 
     &__item:hover {
-      background: #ccc;
+      background: #e6e6e6;
+    }
+
+    .menu-level2 &__item {
+      flex-direction: column;
+      align-items: start;
+      height: auto;
+
+      & > div {
+        margin-left: 10px;
+      }
+
+      .right-word {
+        font-weight: 700;
+      }
+    }
+
+    .menu-level2 &__item:hover {
+      background: #bdd1ff;
     }
 
     &__item > img {
       margin-right: 10px;
+    }
+
+    .open-third-menu-btn {
+      &__wrapper {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        margin-left: 5px;
+        width: 17px;
+        height: 100%;
+        background: white;
+        right: 0;
+
+        &:hover {
+          background: #6587d4;
+        }
+
+        &:hover .open-third-menu-btn__border::after {
+          border-right: 1px solid white;
+          border-bottom: 1px solid white;
+        }
+      }
+
+      &__border {
+        height: 60%;
+        width: 100%;
+        border-left: 1px solid #ccc;
+        display: flex;
+        align-items: center;
+
+        &::after {
+          content: '';
+          margin-left: 3px;
+          width: 6px;
+          height: 6px;
+          border-right: 1px solid #7b7b7b;
+          border-bottom: 1px solid #7b7b7b;
+          transform: rotate(-45deg);
+        }
+      }
+    }
+
+    &__item.spelling::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-right: 1px solid #7b7b7b;
+      border-bottom: 1px solid #7b7b7b;
+      margin-left: auto;
+      transform: rotate(-45deg);
     }
 }

@@ -9,62 +9,163 @@ function createCode() {
     .padStart(6, '0')
 }
 
-const errorWords = [
-  'единственного',
-  'предоставляют',
-  'принимать',
-  'допускается',
-  'привилегированных',
-  'обыкновенные',
-  'Тип',
-  'обществах',
-  'статус'
-]
+let currentWord = ''
+let separatedWords:any = {}
+const errors:any = {
+  'акционерного': [
+    {
+      rightWord: 'акционерного',
+      rootWords: ['акционер', 'акция', 'акцион'],
+    },
+    {
+      rightWord: 'акционерный',
+      rootWords: ['акционер', 'акция', 'акцион'],
+    },
+    {
+      rightWord: 'акционерная',
+      rootWords: ['акционер', 'акция', 'акцион'],
+    },
+    {
+      rightWord: 'акционера',
+      rootWords: ['акционер', 'акция', 'акцион'],
+    },
+  ],
+  'единственного': [
+    {
+      rightWord: 'единственного',
+      rootWords: ['единственный', 'единство'],
+    },
+    {
+      rightWord: 'единственный',
+      rootWords: ['единственный', 'единство'],
+    },
+    {
+      rightWord: 'единственная',
+      rootWords: ['единственный', 'единство'],
+    },
+  ],
+  'предоставляют': [
+    {
+      rightWord: 'предоставляют',
+      rootWords: ['предоставлять', 'предоставленный'],
+    },
+    {
+      rightWord: 'предоставляет',
+      rootWords: ['предоставлять', 'предоставленный'],
+    },
+    {
+      rightWord: 'предоставляю',
+      rootWords: ['предоставлять', 'предоставленный'],
+    },
+  ],
+  'принимать': [
+    {
+      rightWord: 'принимаю',
+      rootWords: ['принять', 'принимающий'],
+    },
+    {
+      rightWord: 'принимаешь',
+      rootWords: ['принять', 'принимающий'],
+    },
+    {
+      rightWord: 'принимает',
+      rootWords: ['принять', 'принимающий'],
+    },
+  ],
+  'допускается': [
+    {
+      rightWord: 'допускается',
+      rootWords: ['допускать', 'допускают', 'допускает'],
+    },
+    {
+      rightWord: 'допускаются',
+      rootWords: ['допускать', 'допускают', 'допускает'],
+    },
+    {
+      rightWord: 'допускаешься',
+      rootWords: ['допускать', 'допускают', 'допускает'],
+    },
+  ],
+  'привилегированных': [
+    {
+      rightWord: 'привилегированных',
+      rootWords: ['привилегированный', 'привилегия'],
+    },
+    {
+      rightWord: 'привилегированный',
+      rootWords: ['привилегированный', 'привилегия'],
+    },
+    {
+      rightWord: 'привилегированная',
+      rootWords: ['привилегированный', 'привилегия'],
+    },
+  ],
+  'обыкновенные': [
+    {
+      rightWord: 'обыкновенные',
+      rootWords: ['обыкновенно', 'обыкновение'],
+    },
+    {
+      rightWord: 'обыкновенный',
+      rootWords: ['обыкновенно', 'обыкновение'],
+    },
+    {
+      rightWord: 'обыкновенная',
+      rootWords: ['обыкновенно', 'обыкновение'],
+    },
+  ],
+  'Тип': [
+    {
+      rightWord: 'Тип',
+      rootWords: ['Типаж'],
+    },
+    {
+      rightWord: 'Типовой',
+      rootWords: ['Типаж'],
+    },
+    {
+      rightWord: 'Типовая',
+      rootWords: ['Типаж'],
+    },
+  ],
+  'обществах': [
+    {
+      rightWord: 'обществах',
+      rootWords: ['общественный', 'общество'],
+    },
+    {
+      rightWord: 'обществам',
+      rootWords: ['общественный', 'общество'],
+    },
+    {
+      rightWord: 'общества',
+      rootWords: ['общественный', 'общество'],
+    },
+  ],
+  'статус': [
+    {
+      rightWord: 'статус',
+      rootWords: ['статусный', 'статистика'],
+    },
+    {
+      rightWord: 'статусы',
+      rootWords: ['статусный', 'статистика'],
+    },
+    {
+      rightWord: 'статусов',
+      rootWords: ['статусный', 'статистика'],
+    },
+  ],
+}
+const errorWords = Object.keys(errors)
 
 let errorWordsWithParts: string[] = []
 
-const contextMenuFirstLevel: any = [
-  {
-    icon: 'src/assets/images/svg-icons-html/plus_gray_medium.svg',
-    label: 'Правописание',
-    name: 'spelling',
-    nextMenu: true
-  },
-  {
-    divider: true
-  },
-  {
-    icon: 'src/assets/images/svg-icons-html/plus_gray_medium.svg',
-    label: 'Добавить в словарь',
-    name: 'addToDictionary',
-  },
-  {
-    icon: 'src/assets/images/svg-icons-html/plus_gray_medium.svg',
-    label: 'Поиск в интернете',
-    name: 'search',
-  },
-  {
-    divider: true
-  },
-  {
-    icon: 'src/assets/images/svg-icons-html/plus_gray_medium.svg',
-    label: 'Вырезать',
-    name: 'cut',
-  },
-  {
-    icon: 'src/assets/images/svg-icons-html/plus_gray_medium.svg',
-    label: 'Копировать',
-    name: 'copy',
-  },
-  {
-    icon: 'src/assets/images/svg-icons-html/plus_gray_medium.svg',
-    label: 'Вставить',
-    name: 'paste',
-  },
-]
-
 const contextMenuHTML = '<ul class="misspelledWord-menu">\n' +
-  '  <li class="misspelledWord-menu__item spelling"><img src="http://dm-kdd-srv05.dms.loc:8080/qd/public/1/carcass/default/images/expcomment.png" alt="icon" /><span>Правописание</span></li>\n' +
+  '  <li class="misspelledWord-menu__item spelling">' +
+  '     <img src="http://dm-kdd-srv05.dms.loc:8080/qd/public/1/carcass/default/images/expcomment.png" alt="icon" />' +
+  '     <span>Правописание</span>' +
+  '  </li>\n' +
   '  <li class="misspelledWord-menu__divider"></li>\n' +
   '  <li class="misspelledWord-menu__item"><img src="http://dm-kdd-srv05.dms.loc:8080/qd/public/1/carcass/default/images/expcomment.png" alt="icon" /><span>Добавить в словарь</span></li>\n' +
   '  <li class="misspelledWord-menu__item"><img src="http://dm-kdd-srv05.dms.loc:8080/qd/public/1/carcass/default/images/expcomment.png" alt="icon" /><span>Поиск в интернете</span></li>\n' +
@@ -74,8 +175,51 @@ const contextMenuHTML = '<ul class="misspelledWord-menu">\n' +
   '  <li class="misspelledWord-menu__item"><img src="http://dm-kdd-srv05.dms.loc:8080/qd/public/1/carcass/default/images/expcomment.png" alt="icon" /><span>Вставить</span></li>\n' +
   '</ul>'
 
-const App = () => {
-  const [display, setDisplay] = useState(true)
+function strCoordinatesToNumber(strWithPx: any) {
+  return Number(strWithPx.slice(0, -2))
+}
+
+/**
+ * returns the actual coordinates to the right or left of the main menu
+ *
+ * @param {object} mainMenuCoordinates - example: {x: '346px', y: '234px'}
+ * @return {object} example: {x: '346px', y: '234px'}
+ */
+function getSecondLevelMenuPosition(mainMenuCoordinates: any){
+  const windowWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth
+  const mainContextMenuWidth = 300
+  const secondLevelMenuWidth = 200
+  const left = strCoordinatesToNumber(mainMenuCoordinates.x)
+  const secondLevelMenuLeftEdgePosition = left + mainContextMenuWidth + secondLevelMenuWidth
+  const isRightSide = windowWidth > secondLevelMenuLeftEdgePosition
+  return {
+    y: mainMenuCoordinates.y,
+    x: isRightSide ? `${left + mainContextMenuWidth}px` : `${left - secondLevelMenuWidth}px`
+  }
+}
+
+function createSecondLevelSpellingMenu(coordinates: any, menuElem: any,) {
+  const menuList = document.createElement('ul')
+  menuList.classList.add('misspelledWord-menu')
+  errors[currentWord].forEach(function(wordObj: any){
+    const menuListItem = document.createElement('li')
+    menuListItem.classList.add('misspelledWord-menu__item')
+    const rootWordsStr = wordObj.rootWords.join(', ')
+    menuListItem.innerHTML =
+      '<div class="right-word">' + wordObj.rightWord + '</div>' +
+      '<div class="rootWords">' + rootWordsStr + '</div>' +
+      '<div class="open-third-menu-btn__wrapper"><div class="open-third-menu-btn__border"/></div>'
+    menuList.appendChild(menuListItem)
+  })
+  
+  const preparedCoordinates = getSecondLevelMenuPosition(coordinates)
+  
+  menuElem.appendChild(menuList)
+  menuElem.style.top = preparedCoordinates.y
+  menuElem.style.left = preparedCoordinates.x
+  menuElem.classList.add('active')
+  console.log(menuElem)
+}
   
   /**
    * get only text content, without symbols and numbers
@@ -152,6 +296,15 @@ const App = () => {
       return accum.concat(separatedWordsObj[currentKey])
     }, [])
   }
+  
+  // function addWordPartsToErrors(currentWord: any) {
+  //     const targetArr = errors[currentWord]
+  //     return separatedWords[currentWord].reduce(function(accum: any, wordPartArrItem: any){
+  //       const updatedErrorsArr = copyByJSON(accum)
+  //       accum[wordPartArrItem] = targetArr
+  //       return updatedErrorsArr
+  //     }, errors)
+  // }
 
   /**
    * checks the error position, if the misspelled word is inside the tag, returns 'true'
@@ -265,6 +418,16 @@ const App = () => {
     initSpellCheckScript()
   }
   
+  function cleanSeparatedWords(separatedWords: any){
+    const updatedObj = Object.assign(separatedWords)
+    Object.keys(updatedObj).forEach(function(errorWord){
+      if (!errorWords.includes(errorWord)) {
+        delete updatedObj[errorWord]
+      }
+    })
+    return updatedObj
+  }
+  
   const checkMisspelledWords = (containerElementList: any) => {
     console.log('start script')
   
@@ -274,10 +437,9 @@ const App = () => {
   
     const content = getCleanContentFromHTML(rawContent)
     const wordArr = getUniqWordArr(content)
-    const separatedWords = getSeparatedWords(wordArr)
+    separatedWords = getSeparatedWords(wordArr)
     
-    // добавляем части в массив для дальшейшей очистки (вынести в отдельную функцию)
-    const wordsPart = flattenSeparatedWords(separatedWords)
+    const wordsPart = flattenSeparatedWords(cleanSeparatedWords(separatedWords))
     errorWordsWithParts = errorWords.concat(wordsPart)
     
     containerElementList.forEach((elementItem: any) => {
@@ -377,7 +539,7 @@ const App = () => {
   
   function createContextMenu(mainContainer: any) {
     const menuWrapper = document.createElement('div')
-    menuWrapper.classList.add('misspelledWord-menu-wrapper')
+    menuWrapper.classList.add('misspelledWord-menu__wrapper', 'menu-level1')
     menuWrapper.innerHTML = contextMenuHTML
     mainContainer.appendChild(menuWrapper)
     return menuWrapper
@@ -392,26 +554,65 @@ const App = () => {
     }
   }
   
+  function removeElem(elem: any){
+    elem.classList.remove('active')
+    elem.innerHTML = ''
+  }
+  
+  function initContextMenuSpellingItem(menuWrapper: any, secondContextMenuElem: any, mainContainer: any) {
+    const spellingItemElem = menuWrapper.querySelector('.misspelledWord-menu__item.spelling')
+    
+    if (spellingItemElem) {
+      spellingItemElem.addEventListener('click', function() {
+        const menuWrapperCoordinates = {
+          x: menuWrapper.style.left,
+          y: menuWrapper.style.top
+        }
+        if (secondContextMenuElem.classList.contains('active')) {
+          removeElem(secondContextMenuElem)
+        } else {
+          createSecondLevelSpellingMenu(menuWrapperCoordinates, secondContextMenuElem)
+        }
+      }, false)
+    }
+  }
+  
   function initMenu(mainContainer: any) {
     let menuWrapper: any = document.querySelector('.misspelledWord-menu-wrapper')
     if (!menuWrapper) {
       menuWrapper = createContextMenu(mainContainer)
     }
+  
+    // выделить в функцию createSecondContextMenu
+    const secondContextMenuElem = document.createElement('div')
+    secondContextMenuElem.classList.add('misspelledWord-menu__wrapper', 'menu-level2')
+    mainContainer.appendChild(secondContextMenuElem)
     
     mainContainer.addEventListener('click', (evt: any) => {
       evt.preventDefault()
       let target = evt.target
       if (target.classList.contains('misspelledWord')) {
+        currentWord = target.getAttribute('data-value')
         menuWrapper.style.top = `${evt.pageY}px`
         menuWrapper.style.left = `${evt.pageX}px`
         menuWrapper.classList.add('active')
-      } else if (isNotContain(target, 'misspelledWord-menu-wrapper')) {
+        removeElem(secondContextMenuElem)
+      } else if (
+        isNotContain(target, 'menu-level1') &&
+        isNotContain(target, 'menu-level2')
+      ) {
         menuWrapper.classList.remove('active')
+        removeElem(secondContextMenuElem)
       }
     }, false)
+  
+    initContextMenuSpellingItem(menuWrapper, secondContextMenuElem, mainContainer)
   }
   
   initSpellCheckScript()
+
+const App = () => {
+  const [display, setDisplay] = useState(true)
 
   // qd-es-text
   return (
